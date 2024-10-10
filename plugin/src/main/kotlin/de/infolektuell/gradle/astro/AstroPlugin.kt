@@ -1,57 +1,11 @@
 package de.infolektuell.gradle.astro
 
-import org.gradle.api.DefaultTask
+import de.infolektuell.gradle.astro.tasks.AstroBuildTask
+import de.infolektuell.gradle.astro.tasks.AstroCheckTask
+import de.infolektuell.gradle.astro.tasks.AstroTask
+import de.infolektuell.gradle.astro.tasks.NpmInstallTask
 import org.gradle.api.Plugin
 import org.gradle.api.Project
-import org.gradle.api.file.ConfigurableFileCollection
-import org.gradle.api.file.DirectoryProperty
-import org.gradle.api.file.RegularFileProperty
-import org.gradle.api.provider.Property
-import org.gradle.api.tasks.*
-import org.gradle.process.ExecOperations
-import java.nio.file.Files
-import javax.inject.Inject
-
-abstract class AstroTask : DefaultTask() {
-  @get:Inject
-  protected abstract val execOperations: ExecOperations
-  @get:InputDirectory
-  abstract val srcDir: DirectoryProperty
-  @get:InputDirectory
-  abstract val publicDir: DirectoryProperty
-  @get:InputFiles
-  abstract val configFiles: ConfigurableFileCollection
-  @get:Input
-  abstract val root: Property<String>
-  @get:OutputFile
-  abstract val report: RegularFileProperty
-}
-
-abstract class AstroCheckTask : AstroTask(), VerificationTask {
-  @TaskAction
-  fun check() {
-    Files.newOutputStream(report.asFile.get().toPath()).use { s ->
-      execOperations.exec { spec ->
-        spec.commandLine("npx", "astro", "check", "--root", root.get())
-        spec.standardOutput = s
-      }
-    }
-  }
-}
-
-abstract class AstroBuildTask : AstroTask() {
-  @get:OutputDirectory
-  abstract val buildDir: DirectoryProperty
-  @TaskAction
-  fun build() {
-    Files.newOutputStream(report.asFile.get().toPath()).use { s ->
-      execOperations.exec { spec ->
-        spec.commandLine("npx", "astro", "build", "--out-dir", buildDir.asFile.get().absolutePath, "--root", root.get())
-        spec.standardOutput = s
-      }
-    }
-  }
-}
 
 abstract class AstroPlugin : Plugin<Project> {
   override fun apply(project: Project) {
@@ -60,11 +14,17 @@ abstract class AstroPlugin : Plugin<Project> {
     val buildDir = project.layout.buildDirectory.dir("dist")
     val logDir = project.layout.buildDirectory.dir("reports/astro")
     val configFiles = project.layout.projectDirectory.files("package.json", "package-lock.json", "tsconfig.json", "astro.config.mjs", "svelte.config.js")
-    project.tasks.withType(AstroTask::class.java).configureEach { task ->
+    val npmInstallTask = project.tasks.register("npmInstall", NpmInstallTask::class.java) { task ->
+        task.configFiles.from(project.layout.projectDirectory.files("package.json", "package-lock.json"))
+        task.packages.convention(project.layout.projectDirectory.dir("node_modules"))
+        task.ci.convention(project.providers.environmentVariable("CI").orElse("").map { it.isNotEmpty() })
+    }
+      project.tasks.withType(AstroTask::class.java).configureEach { task ->
       task.srcDir.convention(srcDir)
       task.publicDir.convention(publicDir)
       task.configFiles.from(configFiles)
       task.root.convention(project.layout.projectDirectory.asFile.absolutePath)
+          task.inputs.dir(npmInstallTask.flatMap { it.packages })
     }
     val astroBuildTask = project.tasks.register("astroBuild", AstroBuildTask::class.java) { task ->
       task.buildDir.convention(buildDir)
