@@ -1,9 +1,11 @@
 plugins {
-    // Apply the Java Gradle plugin development plugin to add support for developing Gradle plugins
-    `java-gradle-plugin`
-
-    // Apply the Kotlin JVM plugin to add support for Kotlin.
     kotlin("jvm") version "2.0.20"
+    signing
+    id("com.gradle.plugin-publish") version "1.2.2"
+}
+
+java {
+    toolchain.languageVersion = JavaLanguageVersion.of(22)
 }
 
 repositories {
@@ -19,11 +21,22 @@ dependencies {
 }
 
 gradlePlugin {
-    // Define the plugin
+    website = "https://github.com/infolektuell/gradle-astro"
+    vcsUrl = "https://github.com/infolektuell/gradle-astro.git"
     val astro by plugins.creating {
         id = "de.infolektuell.astro"
+        displayName = "Astro Plugin"
+        description = "Builds and checks Astro sites"
+        tags = listOf("Astro", "SSG", "web")
         implementationClass = "de.infolektuell.gradle.astro.AstroPlugin"
     }
+}
+
+signing {
+    // Get credentials from env variables for better CI compatibility
+    val signingKey: String? by project
+    val signingPassword: String? by project
+    useInMemoryPgpKeys(signingKey, signingPassword)
 }
 
 // Add a source set for the functional test suite
