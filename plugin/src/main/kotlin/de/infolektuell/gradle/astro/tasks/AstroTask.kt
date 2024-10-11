@@ -17,8 +17,6 @@ abstract class AstroTask : DefaultTask() {
     protected abstract val execOperations: ExecOperations
     @get:InputDirectory
     abstract val srcDir: DirectoryProperty
-    @get:InputDirectory
-    abstract val publicDir: DirectoryProperty
     @get:InputFiles
     abstract val configFiles: ConfigurableFileCollection
     @get:Input

@@ -21,12 +21,12 @@ abstract class AstroPlugin : Plugin<Project> {
     }
       project.tasks.withType(AstroTask::class.java).configureEach { task ->
       task.srcDir.convention(srcDir)
-      task.publicDir.convention(publicDir)
       task.configFiles.from(configFiles)
       task.root.convention(project.layout.projectDirectory.asFile.absolutePath)
           task.inputs.dir(npmInstallTask.flatMap { it.packages })
     }
-    val astroBuildTask = project.tasks.register("astroBuild", AstroBuildTask::class.java) { task ->
+      val astroBuildTask = project.tasks.register("astroBuild", AstroBuildTask::class.java) { task ->
+          task.publicDir.convention(publicDir)
       task.buildDir.convention(buildDir)
       task.report.convention(logDir.map { it.file("build.log") })
     }
